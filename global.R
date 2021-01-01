@@ -1,13 +1,17 @@
 library(shiny)
 library(shinydashboard)
 library(tidyverse)
+library(glue)
 library(scales)
 library(DT)
 library(plotly)
 library(lubridate)
 library(dplyr)
 library(anytime)
+library(RColorBrewer)
 library(leaflet)
+library(ggplot2)
+
 
 data <- read.csv("covid.csv")
 
