@@ -1,99 +1,103 @@
 function(input,output){
-  output$box.case <- renderValueBox(
-    valueBox(covid_daily$Cum.Cases[covid_daily$Date==input$timeSlider], 
-             "Confirmed", 
-             icon = icon("virus"), 
-             color = "yellow")
-  )
-  output$box.recover <- renderValueBox(
-    valueBox(covid_daily$Cum.Recover[covid_daily$Date==input$timeSlider], 
-             "Recovered", 
-             icon = icon("file-medical-alt"), 
-             color = "blue")
-  )
-  output$box.death <- renderValueBox(
-    valueBox(covid_daily$Cum.Death[covid_daily$Date==input$timeSlider], 
-             "Deceased", 
-             icon = icon("skull-crossbones"), 
-             color = "red")
-  )
-  
-  #covid.atDate <- reactive({covid[covid$Date <= format(input$timeSlider, '%d/%m/%Y'), ] })
-  covid.atDate <- covid %>% 
-    filter(Date <= max(Date)) %>% 
-    select("Longitude", "Latitude")
-  
-  output$covid.map <- renderLeaflet(
-    leaflet(data = covid.atDate) %>% 
-      addTiles() %>%
-      addCircleMarkers(col = "maroon", 
-                       fillOpacity = 1, 
-                       radius = 5,
-                       stroke = TRUE,
-                       clusterOptions = markerClusterOptions(
-                         maxClusterRadius=35, disableClusteringAtZoom=14
-                       ))
-  )
-  
-  output$plot1 <- renderPlotly({
-    data.agg1 <- covid_daily %>% 
-      select("Date","active.case","Cum.Cases","Cum.Death","Cum.Recover") %>% 
-      gather(key = "variable", value = "value", -Date)
-    plot1 <- data.agg1 %>% 
-      ggplot(aes(x = Date, y=value)) + 
-      geom_line(aes(color = variable, linetype = variable)) + 
-      scale_color_manual(values = c("red","orange","black", "blue")) +
-      theme_light()+
-      ggtitle("Kurva Evolusi Kasus Covid Indonesia")
-    ggplotly(plot1, tooltip = "text")
-  })
-  
-  output$plot2 <- renderPlotly({
-    covid.island <- covid %>% 
-      filter(Island==input$sel.island)
-    covid_daily.island <- covid.island %>%
-      group_by(Date) %>%
-      summarise(Total.Cases = sum(New.Cases),
-                Total.Death = sum(New.Deaths),
-                Total.Recover = sum(New.Recovered)) %>% 
-      mutate(Cum.Cases = cumsum(Total.Cases),
-             Cum.Death = cumsum(Total.Death),
-             Cum.Recover = cumsum(Total.Recover),
-             active.case = Cum.Cases-Cum.Death-Cum.Recover,
-             Month = month(Date, label = TRUE, abbr = FALSE))
-    data.agg2 <- covid_daily.island %>% 
-      select("Date","active.case","Cum.Cases","Cum.Death","Cum.Recover") %>% 
-      gather(key = "variable", value = "value", -Date)
-    plot2 <- data.agg2 %>% 
-      ggplot(aes(x = Date, y=value)) + 
-      geom_line(aes(color = variable, linetype = variable)) + 
-      scale_color_manual(values = c("red","orange","black", "blue")) +
-      theme_light()+
-      ggtitle(paste("Kurva Evolusi Kasus Covid Pulau",input$sel.island,sep = " "))
-    ggplotly(plot2, tooltip = "text")
-  })
-  
-  output$plot3 <- renderPlotly({
-    covid_island <- covid %>%
-      filter(Month==input$sel.month) %>% 
-      group_by(Island) %>%
-      summarise(Total.Cases = sum(New.Cases),
-                Total.Death = sum(New.Deaths),
-                Total.Recover = sum(New.Recovered))
+    # OVERVIEW
     
-    data.agg3 <- covid_island %>% 
-      select("Island","Total.Cases","Total.Death","Total.Recover") %>% 
-      gather(key = "variable", value = "value", -Island)
-    plot.3 <- data.agg3 %>% 
-      ggplot(aes(Island, value)) + 
-      geom_col(aes(fill = variable), position = "dodge")+
-      scale_fill_manual(values=c("#153E7E","red","#6698FF"))+
-      theme_minimal()+
-      ggtitle(paste("Plot Evaluasi Kasus Covid Bulan",input$sel.month,sep = " "))
-    ggplotly(plot.3)
-  })
-  output$data <- renderDataTable({
-    datatable(covid, options = list(scrollX = T))
-  })
-  
+    # Value Box
+    output$box_case <- renderValueBox(
+        valueBox(covid_daily$Cumulative_Case[covid_daily$Dates==input$timeSlider], 
+                 "Confirmed", 
+                 icon = icon("virus"), 
+                 color = "yellow")
+    )
+    output$box_recover <- renderValueBox(
+        valueBox(covid_daily$Cumulative_Recover[covid_daily$Dates==input$timeSlider], 
+                 "Recovered", 
+                 icon = icon("file-medical-alt"), 
+                 color = "blue")
+    )
+    output$box_death <- renderValueBox(
+        valueBox(covid_daily$Cumulative_Death[covid_daily$Dates==input$timeSlider], 
+                 "Deceased", 
+                 icon = icon("skull-crossbones"), 
+                 color = "red")
+    )
+    
+    # Map
+    output$covid_map <- renderLeaflet({
+        covid_atDate <- covid %>% 
+            filter(Dates <= input$timeSlider) %>% 
+            select("Longitude", "Latitude")
+        leaflet(data = covid_atDate) %>% 
+            addTiles() %>%
+            addCircleMarkers(col = "maroon", 
+                             fillOpacity = 1, 
+                             radius = 5,
+                             stroke = TRUE,
+                             clusterOptions = markerClusterOptions(maxClusterRadius=35,
+                                                                   disableClusteringAtZoom=14))
+    })
+       
+    #PLOTS
+    
+    #plot1
+    output$plot1 <- renderPlotly({
+        data_agg1 <- covid_daily %>% 
+            select("Dates","Active_Case","Cumulative_Case","Cumulative_Death","Cumulative_Recover") %>% 
+            gather(key = "variable", value = "value", -Dates)
+        plot1 <- data_agg1 %>% 
+            ggplot(aes(x = Dates, y=value)) + 
+            geom_line(aes(color = variable, linetype = variable)) + 
+            scale_color_manual(values = c("red","orange","black", "blue")) +
+            theme_light()+
+            ggtitle("Kurva Evolusi Kasus Covid Indonesia")
+        ggplotly(plot1, tooltip = "text")
+    })
+    #plot2
+    output$plot2 <- renderPlotly({
+        covid_island <- covid %>% 
+            filter(Island==input$sel_island) %>% 
+            group_by(Dates) %>%
+            summarise(Total_Cases = sum(New.Cases),
+                      Total_Death = sum(New.Deaths),
+                      Total_Recover = sum(New.Recovered)) %>% 
+            mutate(Cumulative_Case = cumsum(Total_Cases),
+                   Cumulative_Death = cumsum(Total_Death),
+                   Cumulative_Recover = cumsum(Total_Recover),
+                   Active_Case = Cumulative_Case-Cumulative_Death-Cumulative_Recover,
+                   Month = month(Dates, label = TRUE, abbr = FALSE))
+        data_agg2 <- covid_island %>% 
+            select("Dates","Active_Case","Cumulative_Case","Cumulative_Death","Cumulative_Recover") %>% 
+            gather(key = "variable", value = "value", -Dates)
+        plot2 <- data_agg2 %>% 
+            ggplot(aes(x = Dates, y=value)) + 
+            geom_line(aes(color = variable, linetype = variable)) + 
+            scale_color_manual(values = c("red","orange","black", "blue")) +
+            theme_light()+
+            ggtitle(paste("Kurva Evolusi Kasus Covid Pulau",input$sel_island,sep = " "))
+        ggplotly(plot2, tooltip = "text")
+    })
+    #plot3
+    output$plot3 <- renderPlotly({
+        covid_island2 <- covid %>%
+            filter(Monthh==input$sel_month) %>% 
+            group_by(Island) %>%
+            summarise(Total_Case = sum(New.Cases),
+                      Total_Death = sum(New.Deaths),
+                      Total_Recover = sum(New.Recovered))
+        data_agg3 <- covid_island2 %>% 
+            select("Island","Total_Case","Total_Death","Total_Recover") %>% 
+            gather(key = "variable", value = "value", -Island)
+        plot3 <- data_agg3 %>% 
+            ggplot(aes(Island, value)) + 
+            geom_col(aes(fill = variable), position = "dodge")+
+            scale_fill_manual(values=c("#153E7E","red","#6698FF"))+
+            theme_minimal()+
+            ggtitle(paste("Plot Evaluasi Kasus Covid Bulan",input$sel_month,sep = " "))
+        ggplotly(plot3, tooltip = "text")
+    })
+    
+    
+    # TABLE
+    output$table <- DT::renderDataTable({
+        DT::datatable(data = covid, options = list(scrollX = T))
+    })
 }
